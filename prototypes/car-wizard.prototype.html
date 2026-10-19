@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>PROTOTYPE — CAR Wizard (throwaway, not production)</title>
+<style>
+  :root {
+    --accent: #1d6f5c;
+    --bg: #faf9f6;
+    --panel: #ffffff;
+    --border: #e2ddd3;
+    --text: #2a2a28;
+    --muted: #716d64;
+    --danger: #a3372b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 32px 20px 80px; }
+  .banner {
+    background: #fff4e5;
+    border: 1px solid #e8c27a;
+    color: #6b4a07;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 24px;
+    font-weight: 600;
+  }
+  h1 { font-size: 24px; margin: 0 0 6px; }
+  .question {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin-bottom: 28px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 32px 0 10px; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .state-grid { display: grid; grid-template-columns: 160px 1fr; gap: 6px 14px; font-size: 14px; }
+  .state-grid dt { color: var(--muted); }
+  .state-grid dd { margin: 0; font-weight: 600; }
+  .status-pill {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .status-open { background: #e3f3ee; color: var(--accent); }
+  .status-closed { background: #eceae4; color: var(--muted); }
+  .step-track { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .step-chip {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .step-chip.current { background: var(--accent); color: white; border-color: var(--accent); }
+  .step-chip.done { background: #e3f3ee; color: var(--accent); border-color: #bfe3d7; }
+  .fields { margin-top: 14px; display: grid; gap: 10px; }
+  .field { display: grid; gap: 4px; }
+  .field label { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .field input[type=text], .field select, .field textarea {
+    font: inherit;
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
+  }
+  .field textarea { resize: vertical; min-height: 44px; }
+  .checkbox-field { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  button {
+    font: inherit;
+    padding: 9px 16px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: #fff;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: white; }
+  button.danger { background: #fff; border-color: var(--danger); color: var(--danger); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .log {
+    margin-top: 14px;
+    font-size: 13px;
+    color: var(--muted);
+    background: #f4f2ec;
+    border-radius: 8px;
+    padding: 10px 14px;
+  }
+  .log strong { color: var(--text); }
+  .tabs { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+  .tab-btn {
+    font-size: 13px;
+    padding: 7px 12px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: #fff;
+  }
+  .tab-btn.active { background: var(--text); color: white; border-color: var(--text); }
+  .scenario-desc { font-size: 14px; margin-bottom: 12px; color: var(--muted); }
+  .scenario-steps { display: flex; flex-direction: column; gap: 6px; }
+  .scenario-steps button { text-align: left; }
+  .scenario-steps button.played { opacity: 0.45; }
+  .error-text { color: var(--danger); font-size: 13px; font-weight: 600; margin-top: 8px; }
+  .section-divider { border: none; border-top: 1px dashed var(--border); margin: 16px 0; }
+  .supplier-tag { font-size: 11px; background: #efe4f7; color: #5b3a85; padding: 2px 8px; border-radius: 999px; font-weight: 700; text-transform: uppercase; margin-left: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="banner">PROTOTYPE — throwaway demo, not production code. Built to answer one question (see below), then thrown away.</div>
+
+  <h1>CAR Wizard — does this flow feel right?</h1>
+  <div class="question">
+    <strong>Question this prototype answers:</strong> does the fixed Corrective Action wizard
+    (Intake → Containment → Root Cause → Corrective Action → Verification → Close), with the
+    supplier/internal split and the 5-Whys root cause, feel <em>simple enough</em> for a busy QA
+    worker — and does the state model (Open/Closed, Supplier Involved, reopen-with-reason) hold up
+    when pushed through the awkward cases? Click through the free-play buttons below, or run a
+    guided walkthrough to see a specific scenario end-to-end.
+  </div>
+
+  <h2>Current record</h2>
+  <div class="panel">
+    <dl class="state-grid" id="stateView"></dl>
+    <div class="step-track" id="stepTrack"></div>
+  </div>
+
+  <h2>Step fields</h2>
+  <div class="panel" id="fieldsPanel"></div>
+
+  <h2>Free play</h2>
+  <div class="panel">
+    <div class="btn-row" id="freePlayButtons"></div>
+    <div class="error-text" id="errorText"></div>
+    <div class="log" id="logPanel"><strong>Log:</strong> <span id="logText">nothing yet</span></div>
+  </div>
+
+  <h2>Guided walkthroughs</h2>
+  <div class="panel">
+    <div class="tabs" id="scenarioTabs"></div>
+    <div class="scenario-desc" id="scenarioDesc"></div>
+    <div class="scenario-steps" id="scenarioSteps"></div>
+  </div>
+</div>
+
+<script>
+// =====================================================================
+// PURE STATE MACHINE MODULE — no DOM access, liftable into the real app.
+// =====================================================================
+
+const STEPS = ["intake", "containment", "rootCause", "correctiveAction", "verification", "close"];
+
+function createInitialState() {
+  return {
+    status: "open",          // 'open' | 'closed'
+    currentStep: "intake",   // index into STEPS
+    supplierInvolved: false,
+    intake: { title: "", sourceType: "incoming_qc", ncrNumber: "", reportedBy: "" },
+    containment: { actions: "", batchesChecked: false },
+    rootCause: { why1: "", why2: "", why3: "", why4: "", why5: "" },
+    correctiveAction: { internalAction: "", supplierPlan: "" },
+    verification: { internalCheck: "", supplierEvidence: "" },
+    reopenHistory: [], // { reason, reopenedAtStep }
+    closedAt: null,
+  };
+}
+
+function stepRequirementsMet(state, step) {
+  switch (step) {
+    case "intake":
+      return state.intake.title.trim() !== "" && state.intake.ncrNumber.trim() !== "";
+    case "containment":
+      return state.containment.actions.trim() !== "";
+    case "rootCause":
+      return state.rootCause.why1.trim() !== "";
+    case "correctiveAction":
+      if (state.correctiveAction.internalAction.trim() === "") return false;
+      if (state.supplierInvolved && state.correctiveAction.supplierPlan.trim() === "") return false;
+      return true;
+    case "verification":
+      if (state.verification.internalCheck.trim() === "") return false;
+      if (state.supplierInvolved && state.verification.supplierEvidence.trim() === "") return false;
+      return true;
+    default:
+      return true;
+  }
+}
+
+function canAdvance(state) {
+  return stepRequirementsMet(state, state.currentStep) && state.currentStep !== "close";
+}
+
+function canClose(state) {
+  return state.currentStep === "close" && stepRequirementsMet(state, "verification") && state.status === "open";
+}
+
+// (state, action) => { state, error? }
+function reducer(state, action) {
+  switch (action.type) {
+    case "SET_FIELD": {
+      const { step, field, value } = action;
+      return { state: { ...state, [step]: { ...state[step], [field]: value } } };
+    }
+    case "TOGGLE_SUPPLIER_INVOLVED":
+      return { state: { ...state, supplierInvolved: !state.supplierInvolved } };
+    case "ADVANCE_STEP": {
+      if (!canAdvance(state)) {
+        return { state, error: `Can't advance from "${action.stepLabel}" — required fields for this step aren't filled in yet.` };
+      }
+      const idx = STEPS.indexOf(state.currentStep);
+      return { state: { ...state, currentStep: STEPS[idx + 1] } };
+    }
+    case "CLOSE_RECORD": {
+      if (!canClose(state)) {
+        return { state, error: "Can't close — verification isn't complete yet (internal check required, plus supplier evidence if a supplier is involved)." };
+      }
+      return { state: { ...state, status: "closed", closedAt: new Date().toISOString() } };
+    }
+    case "REOPEN_RECORD": {
+      if (state.status !== "closed") {
+        return { state, error: "Only a closed record can be reopened." };
+      }
+      if (!action.reason || !action.reason.trim()) {
+        return { state, error: "A reopen reason is required." };
+      }
+      return {
+        state: {
+          ...state,
+          status: "open",
+          currentStep: "verification",
+          reopenHistory: [...state.reopenHistory, { reason: action.reason.trim(), reopenedAtStep: "verification" }],
+        },
+      };
+    }
+    case "RESET":
+      return { state: createInitialState() };
+    default:
+      return { state };
+  }
+}
+
+// =====================================================================
+// THROWAWAY PAGE SHELL — wires the DOM to the pure reducer above.
+// =====================================================================
+
+let state = createInitialState();
+let lastError = "";
+let playedScenarioButtons = new Set();
+let activeScenario = null;
+
+function dispatch(action) {
+  const result = reducer(state, action);
+  state = result.state;
+  lastError = result.error || "";
+  if (!result.error) {
+    document.getElementById("logText").textContent = describeAction(action);
+  }
+  render();
+}
+
+function describeAction(action) {
+  switch (action.type) {
+    case "SET_FIELD": return `Updated "${action.field}" on ${action.step}.`;
+    case "TOGGLE_SUPPLIER_INVOLVED": return `Supplier Involved set to ${!state.supplierInvolved === false ? state.supplierInvolved : !state.supplierInvolved}.`;
+    case "ADVANCE_STEP": return `Advanced past ${action.stepLabel}.`;
+    case "CLOSE_RECORD": return "Record closed.";
+    case "REOPEN_RECORD": return `Record reopened: "${action.reason}".`;
+    case "RESET": return "Record reset to a fresh Intake.";
+    default: return "";
+  }
+}
+
+const STEP_LABELS = {
+  intake: "Intake",
+  containment: "Containment",
+  rootCause: "Root Cause",
+  correctiveAction: "Corrective Action",
+  verification: "Verification",
+  close: "Close",
+};
+
+const SOURCE_TYPE_LABELS = {
+  customer_complaint: "Customer Complaint",
+  incoming_qc: "Incoming QC",
+  audit_finding: "Audit Finding",
+  other: "Other",
+};
+
+function render() {
+  renderStateView();
+  renderStepTrack();
+  renderFields();
+  renderFreePlay();
+  document.getElementById("errorText").textContent = lastError;
+  if (activeScenario) renderScenarioSteps();
+}
+
+function renderStateView() {
+  const el = document.getElementById("stateView");
+  el.innerHTML = `
+    <dt>Status</dt><dd><span class="status-pill status-${state.status}">${state.status}</span></dd>
+    <dt>Current step</dt><dd>${STEP_LABELS[state.currentStep]}</dd>
+    <dt>Source type</dt><dd>${SOURCE_TYPE_LABELS[state.intake.sourceType]}</dd>
+    <dt>NCR reference</dt><dd>${state.intake.ncrNumber || "<em>not set</em>"}</dd>
+    <dt>Supplier involved</dt><dd>${state.supplierInvolved ? "Yes" : "No"}</dd>
+    <dt>Reopen count</dt><dd>${state.reopenHistory.length}</dd>
+    ${state.closedAt ? `<dt>Closed at</dt><dd>${new Date(state.closedAt).toLocaleString()}</dd>` : ""}
+  `;
+}
+
+function renderStepTrack() {
+  const el = document.getElementById("stepTrack");
+  const currentIdx = STEPS.indexOf(state.currentStep);
+  el.innerHTML = STEPS.map((s, i) => {
+    const cls = s === state.currentStep ? "current" : (i < currentIdx ? "done" : "");
+    return `<span class="step-chip ${cls}">${STEP_LABELS[s]}</span>`;
+  }).join("");
+}
+
+function renderFields() {
+  const el = document.getElementById("fieldsPanel");
+  const step = state.currentStep;
+  let html = "";
+
+  if (step === "intake") {
+    html = `
+      <div class="fields">
+        <div class="field">
+          <label>Title / summary</label>
+          <input type="text" data-step="intake" data-field="title" value="${esc(state.intake.title)}" />
+        </div>
+        <div class="field">
+          <label>Source type</label>
+          <select data-step="intake" data-field="sourceType">
+            ${Object.entries(SOURCE_TYPE_LABELS).map(([v, l]) =>
+              `<option value="${v}" ${state.intake.sourceType === v ? "selected" : ""}>${l}</option>`).join("")}
+          </select>
+        </div>
+        <div class="field">
+          <label>NCR reference number</label>
+          <input type="text" data-step="intake" data-field="ncrNumber" value="${esc(state.intake.ncrNumber)}" />
+        </div>
+        <div class="field">
+          <label>Reported by</label>
+          <input type="text" data-step="intake" data-field="reportedBy" value="${esc(state.intake.reportedBy)}" />
+        </div>
+        <div class="checkbox-field">
+          <input type="checkbox" id="supplierInvolved" ${state.supplierInvolved ? "checked" : ""} />
+          <label for="supplierInvolved">Supplier involved</label>
+        </div>
+      </div>`;
+  } else if (step === "containment") {
+    html = `
+      <div class="fields">
+        <div class="field">
+          <label>Containment actions taken</label>
+          <textarea data-step="containment" data-field="actions">${esc(state.containment.actions)}</textarea>
+        </div>
+        <div class="checkbox-field">
+          <input type="checkbox" data-step="containment" data-field="batchesChecked" ${state.containment.batchesChecked ? "checked" : ""} />
+          <label>Every affected batch/lot/site checked</label>
+        </div>
+      </div>`;
+  } else if (step === "rootCause") {
+    html = `
+      <div class="fields">
+        ${["why1","why2","why3","why4","why5"].map((f, i) => `
+          <div class="field">
+            <label>Why ${i + 1}${i === 0 ? " (required)" : " (optional)"}</label>
+            <input type="text" data-step="rootCause" data-field="${f}" value="${esc(state.rootCause[f])}" />
+          </div>`).join("")}
+      </div>`;
+  } else if (step === "correctiveAction") {
+    html = `
+      <div class="fields">
+        <div class="field">
+          <label>Internal corrective action (Stafast)</label>
+          <textarea data-step="correctiveAction" data-field="internalAction">${esc(state.correctiveAction.internalAction)}</textarea>
+        </div>
+        ${state.supplierInvolved ? `
+        <hr class="section-divider" />
+        <div class="field">
+          <label>Supplier's corrective action plan <span class="supplier-tag">supplier</span></label>
+          <textarea data-step="correctiveAction" data-field="supplierPlan">${esc(state.correctiveAction.supplierPlan)}</textarea>
+        </div>` : ""}
+      </div>`;
+  } else if (step === "verification") {
+    html = `
+      <div class="fields">
+        <div class="field">
+          <label>Internal verification (on parts arrival)</label>
+          <textarea data-step="verification" data-field="internalCheck">${esc(state.verification.internalCheck)}</textarea>
+        </div>
+        ${state.supplierInvolved ? `
+        <hr class="section-divider" />
+        <div class="field">
+          <label>Supplier verification evidence <span class="supplier-tag">supplier</span></label>
+          <textarea data-step="verification" data-field="supplierEvidence">${esc(state.verification.supplierEvidence)}</textarea>
+        </div>` : ""}
+      </div>`;
+  } else if (step === "close") {
+    html = `
+      <p style="font-size:14px;">All step data below is read-only. Review, then close the record using the button in Free Play.</p>
+      <div class="fields">
+        <div class="field"><label>Internal verification</label><div>${esc(state.verification.internalCheck) || "<em>empty</em>"}</div></div>
+        ${state.supplierInvolved ? `<div class="field"><label>Supplier evidence</label><div>${esc(state.verification.supplierEvidence) || "<em>empty</em>"}</div></div>` : ""}
+      </div>`;
+  }
+
+  el.innerHTML = html;
+
+  el.querySelectorAll("[data-step][data-field]").forEach((input) => {
+    input.addEventListener("input", (e) => {
+      const { step, field } = e.target.dataset;
+      const value = e.target.type === "checkbox" ? e.target.checked : e.target.value;
+      dispatch({ type: "SET_FIELD", step, field, value });
+    });
+  });
+
+  const supplierToggle = document.getElementById("supplierInvolved");
+  if (supplierToggle) {
+    supplierToggle.addEventListener("change", () => dispatch({ type: "TOGGLE_SUPPLIER_INVOLVED" }));
+  }
+}
+
+function renderFreePlay() {
+  const el = document.getElementById("freePlayButtons");
+  const buttons = [];
+
+  if (state.currentStep !== "close") {
+    buttons.push(`<button class="primary" id="btnAdvance">Save &amp; continue to ${STEP_LABELS[STEPS[STEPS.indexOf(state.currentStep) + 1]]}</button>`);
+  }
+  if (state.currentStep === "close" && state.status === "open") {
+    buttons.push(`<button class="primary" id="btnClose">Close record</button>`);
+  }
+  if (state.status === "closed") {
+    buttons.push(`<button class="danger" id="btnReopen">Reopen (requires reason)</button>`);
+  }
+  buttons.push(`<button id="btnReset">Reset to a fresh record</button>`);
+
+  el.innerHTML = buttons.join("");
+
+  const advanceBtn = document.getElementById("btnAdvance");
+  if (advanceBtn) advanceBtn.addEventListener("click", () =>
+    dispatch({ type: "ADVANCE_STEP", stepLabel: STEP_LABELS[state.currentStep] }));
+
+  const closeBtn = document.getElementById("btnClose");
+  if (closeBtn) closeBtn.addEventListener("click", () => dispatch({ type: "CLOSE_RECORD" }));
+
+  const reopenBtn = document.getElementById("btnReopen");
+  if (reopenBtn) reopenBtn.addEventListener("click", () => {
+    const reason = prompt("Why is this record being reopened?");
+    if (reason !== null) dispatch({ type: "REOPEN_RECORD", reason });
+  });
+
+  const resetBtn = document.getElementById("btnReset");
+  if (resetBtn) resetBtn.addEventListener("click", () => dispatch({ type: "RESET" }));
+}
+
+function esc(str) {
+  return String(str || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// ---------------------------------------------------------------------
+// Guided walkthroughs
+// ---------------------------------------------------------------------
+
+const SCENARIOS = [
+  {
+    id: "happy-path",
+    label: "Happy path (simple, no supplier)",
+    description: "The common case you described: a minor in-house issue (bad threads / oil on a part) found during Incoming QC. No supplier involved. Watch how few fields are actually required.",
+    steps: [
+      { label: "Fill in Intake (title, source, NCR #)", action: () => fillIntake("Oily threads on batch 4412", "incoming_qc", "NCR-2026-0881") },
+      { label: "Advance to Containment", action: () => dispatch({ type: "ADVANCE_STEP", stepLabel: "Intake" }) },
+      { label: "Fill in Containment actions", action: () => dispatch({ type: "SET_FIELD", step: "containment", field: "actions", value: "Quarantined remaining stock from batch 4412; confirmed no other batches affected." }) },
+      { label: "Advance to Root Cause", action: () => dispatch({ type: "ADVANCE_STEP", stepLabel: "Containment" }) },
+      { label: "Fill in just the first Why", action: () => dispatch({ type: "SET_FIELD", step: "rootCause", field: "why1", value: "Degreasing step was skipped on the line that day." }) },
+      { label: "Advance to Corrective Action", action: () => dispatch({ type: "ADVANCE_STEP", stepLabel: "Root Cause" }) },
+      { label: "Fill in internal corrective action", action: () => dispatch({ type: "SET_FIELD", step: "correctiveAction", field: "internalAction", value: "Added a degreasing checklist sign-off before packaging." }) },
+      { label: "Advance to Verification", action: () => dispatch({ type: "ADVANCE_STEP", stepLabel: "Corrective Action" }) },
+      { label: "Fill in internal verification", action: () => dispatch({ type: "SET_FIELD", step: "verification", field: "internalCheck", value: "Spot-checked next 3 batches — clean." }) },
+      { label: "Advance to Close", action: () => dispatch({ type: "ADVANCE_STEP", stepLabel: "Verification" }) },
+      { label: "Close the record", action: () => dispatch({ type: "CLOSE_RECORD" }) },
+    ],
+  },
+  {
+    id: "supplier-involved",
+    label: "Supplier involved (repeat vendor issue)",
+    description: "A customer complaint traced back to a repeat supplier defect. Watch the supplier sections appear in Corrective Action and Verification, and that both supplier and internal evidence are required before closing.",
+    steps: [
+      { label: "Fill in Intake as a customer complaint", action: () => fillIntake("Repeat fastener shear failure", "customer_complaint", "NCR-2026-0902") },
+      { label: "Mark Supplier Involved = Yes", action: () => dispatch({ type: "TOGGLE_SUPPLIER_INVOLVED" }) },
+      { label: "Advance to Containment", action: () => dispatch({ type: "ADVANCE_STEP", stepLabel: "Intake" }) },
+      { label: "Fill in Containment", action: () => dispatch({ type: "SET_FIELD", step: "containment", field: "actions", value: "Held all inventory from the supplier's last 3 shipments." }) },
+      { label: "Advance to Root Cause", action: () => dispatch({ type: "ADVANCE_STEP", stepLabel: "Containment" }) },
+      { label: "Fill in Root Cause", action: () => dispatch({ type: "SET_FIELD", step: "rootCause", field: "why1", value: "Supplier's heat-treat process drifted out of spec." }) },
+      { label: "Advance to Corrective Action (notice the supplier section)", action: () => dispatch({ type: "ADVANCE_STEP", stepLabel: "Root Cause" }) },
+      { label: "Fill in internal action only — try to advance (should fail)", action: () => { dispatch({ type: "SET_FIELD", step: "correctiveAction", field: "internalAction", value: "Added incoming inspection sampling for this part number." }); dispatch({ type: "ADVANCE_STEP", stepLabel: "Corrective Action" }); } },
+      { label: "Now fill in the supplier's plan too", action: () => dispatch({ type: "SET_FIELD", step: "correctiveAction", field: "supplierPlan", value: "Supplier recalibrating heat-treat oven; will requalify before next shipment." }) },
+      { label: "Advance to Verification", action: () => dispatch({ type: "ADVANCE_STEP", stepLabel: "Corrective Action" }) },
+      { label: "Fill in internal verification", action: () => dispatch({ type: "SET_FIELD", step: "verification", field: "internalCheck", value: "New shipment sampled — within spec." }) },
+      { label: "Fill in supplier verification evidence", action: () => dispatch({ type: "SET_FIELD", step: "verification", field: "supplierEvidence", value: "Supplier sent requalification cert with the shipment." }) },
+      { label: "Advance to Close and close it", action: () => { dispatch({ type: "ADVANCE_STEP", stepLabel: "Verification" }); dispatch({ type: "CLOSE_RECORD" }); } },
+    ],
+  },
+  {
+    id: "illegal-close",
+    label: "Try to close too early (should be blocked)",
+    description: "An attempt to close a record before verification is actually done. The model should refuse and explain why, rather than silently allowing a half-verified closure.",
+    steps: [
+      { label: "Fill in Intake", action: () => fillIntake("Mislabeled packaging", "audit_finding", "NCR-2026-0915") },
+      { label: "Advance to Containment", action: () => dispatch({ type: "ADVANCE_STEP", stepLabel: "Intake" }) },
+      { label: "Fill in Containment", action: () => dispatch({ type: "SET_FIELD", step: "containment", field: "actions", value: "Pulled mislabeled boxes from shipping staging." }) },
+      { label: "Advance to Root Cause", action: () => dispatch({ type: "ADVANCE_STEP", stepLabel: "Containment" }) },
+      { label: "Fill in Root Cause", action: () => dispatch({ type: "SET_FIELD", step: "rootCause", field: "why1", value: "Label template wasn't updated after a part number change." }) },
+      { label: "Advance to Corrective Action", action: () => dispatch({ type: "ADVANCE_STEP", stepLabel: "Root Cause" }) },
+      { label: "Fill in Corrective Action", action: () => dispatch({ type: "SET_FIELD", step: "correctiveAction", field: "internalAction", value: "Added a label-template review step to the part-change checklist." }) },
+      { label: "Advance to Verification — but leave it empty", action: () => dispatch({ type: "ADVANCE_STEP", stepLabel: "Corrective Action" }) },
+      { label: "Advance to Close without filling Verification (watch it get blocked)", action: () => dispatch({ type: "ADVANCE_STEP", stepLabel: "Verification" }) },
+      { label: "Now fill in Verification for real", action: () => dispatch({ type: "SET_FIELD", step: "verification", field: "internalCheck", value: "Confirmed new labels print correctly on next batch." }) },
+      { label: "Advance to Close (now it works)", action: () => dispatch({ type: "ADVANCE_STEP", stepLabel: "Verification" }) },
+    ],
+  },
+  {
+    id: "reopen",
+    label: "Close, then reopen with a reason",
+    description: "A closed record turns out not to have actually fixed the issue. Reopening should require a short reason and should land back at Verification with everything else intact.",
+    steps: [
+      { label: "Fill in Intake", action: () => fillIntake("Loose fitting on assembly", "incoming_qc", "NCR-2026-0930") },
+      { label: "Advance to Containment", action: () => dispatch({ type: "ADVANCE_STEP", stepLabel: "Intake" }) },
+      { label: "Fill in Containment", action: () => dispatch({ type: "SET_FIELD", step: "containment", field: "actions", value: "Quarantined open stock." }) },
+      { label: "Advance to Root Cause", action: () => dispatch({ type: "ADVANCE_STEP", stepLabel: "Containment" }) },
+      { label: "Fill in Root Cause", action: () => dispatch({ type: "SET_FIELD", step: "rootCause", field: "why1", value: "Torque spec on fixture was set too low." }) },
+      { label: "Advance to Corrective Action", action: () => dispatch({ type: "ADVANCE_STEP", stepLabel: "Root Cause" }) },
+      { label: "Fill in Corrective Action", action: () => dispatch({ type: "SET_FIELD", step: "correctiveAction", field: "internalAction", value: "Updated fixture torque spec and retrained line." }) },
+      { label: "Advance to Verification", action: () => dispatch({ type: "ADVANCE_STEP", stepLabel: "Corrective Action" }) },
+      { label: "Fill in Verification", action: () => dispatch({ type: "SET_FIELD", step: "verification", field: "internalCheck", value: "Spot check looked fine at the time." }) },
+      { label: "Advance to Close and close it", action: () => { dispatch({ type: "ADVANCE_STEP", stepLabel: "Verification" }); dispatch({ type: "CLOSE_RECORD" }); } },
+      { label: "Reopen it (you'll be asked for a reason — try leaving it blank first)", action: () => { const r = prompt("Why is this record being reopened?"); if (r !== null) dispatch({ type: "REOPEN_RECORD", reason: r }); } },
+    ],
+  },
+];
+
+function fillIntake(title, sourceType, ncrNumber) {
+  dispatch({ type: "SET_FIELD", step: "intake", field: "title", value: title });
+  dispatch({ type: "SET_FIELD", step: "intake", field: "sourceType", value: sourceType });
+  dispatch({ type: "SET_FIELD", step: "intake", field: "ncrNumber", value: ncrNumber });
+}
+
+function renderScenarioTabs() {
+  const el = document.getElementById("scenarioTabs");
+  el.innerHTML = SCENARIOS.map((s) =>
+    `<button class="tab-btn ${activeScenario === s.id ? "active" : ""}" data-scenario="${s.id}">${s.label}</button>`
+  ).join("");
+  el.querySelectorAll("[data-scenario]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      activeScenario = btn.dataset.scenario;
+      playedScenarioButtons = new Set();
+      dispatch({ type: "RESET" });
+      renderScenarioTabs();
+      renderScenarioDesc();
+      renderScenarioSteps();
+    });
+  });
+}
+
+function renderScenarioDesc() {
+  const scenario = SCENARIOS.find((s) => s.id === activeScenario);
+  document.getElementById("scenarioDesc").textContent = scenario ? scenario.description : "Pick a scenario tab above to start a guided walkthrough.";
+}
+
+function renderScenarioSteps() {
+  const scenario = SCENARIOS.find((s) => s.id === activeScenario);
+  const el = document.getElementById("scenarioSteps");
+  if (!scenario) { el.innerHTML = ""; return; }
+  el.innerHTML = scenario.steps.map((step, i) =>
+    `<button data-idx="${i}" class="${playedScenarioButtons.has(i) ? "played" : ""}">${i + 1}. ${step.label}</button>`
+  ).join("");
+  el.querySelectorAll("[data-idx]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.dataset.idx);
+      scenario.steps[idx].action();
+      playedScenarioButtons.add(idx);
+      renderScenarioSteps();
+    });
+  });
+}
+
+// ---------------------------------------------------------------------
+// Boot
+// ---------------------------------------------------------------------
+renderScenarioTabs();
+renderScenarioDesc();
+render();
+</script>
+</body>
+</html>
