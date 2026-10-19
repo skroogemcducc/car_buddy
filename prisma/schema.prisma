@@ -13,3 +13,16 @@ model User {
   pinHash     String
   createdAt   DateTime @default(now())
 }
+
+model CorrectiveAction {
+  id               String   @id @default(cuid())
+  title            String
+  summary          String?
+  sourceType       String
+  ncrReference     String
+  reportedBy       String?
+  supplierInvolved Boolean  @default(false)
+  status           String   @default("open")
+  currentStep      String   @default("intake")
+  createdAt        DateTime @default(now())
+}

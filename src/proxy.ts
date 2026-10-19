@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifySessionToken, SESSION_COOKIE } from "@/lib/auth/session";
 
-const PROTECTED_PATHS = ["/car"];
+const PROTECTED_PATHS = ["/car", "/api/car"];
 
 export async function proxy(request: NextRequest) {
   const isProtected = PROTECTED_PATHS.some((path) =>
@@ -15,6 +15,9 @@ export async function proxy(request: NextRequest) {
   const session = token ? await verifySessionToken(token) : null;
 
   if (!session) {
+    if (request.nextUrl.pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+    }
     const loginUrl = new URL("/login", request.url);
     return NextResponse.redirect(loginUrl);
   }
@@ -23,5 +26,5 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/car/:path*"],
+  matcher: ["/car/:path*", "/api/car/:path*"],
 };
